@@ -1,26 +1,163 @@
 @import "tailwindcss";
 
+/*
+  Dizajn sustav — namjerno suzdržan.
+  Kupac je obrtnik koji je zabrinut zbog zakona; svaki ukras koji ne nosi
+  informaciju smanjuje povjerenje. Boje statusa (crvena/žuta/zelena) su
+  rezervirane isključivo za semafor, zato je brend tamnoplav, ne zelen.
+
+  Stranica je namjerno samo u svijetloj temi: jedan besprijekoran izgled
+  umjesto dva osrednja.
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --ink: #0b1220;
+  --ink-2: #3d4a63;
+  --ink-3: #6b7893;
+  --line: #e3e7ef;
+  --line-2: #cfd6e4;
+  --surface: #ffffff;
+  --surface-2: #f6f8fc;
+  --surface-3: #eef2f9;
+
+  --brand: #14417a;
+  --brand-2: #0e2f58;
+  --brand-soft: #e9f0fa;
+
+  --kriticno: #a81f16;
+  --kriticno-bg: #fdeceb;
+  --kriticno-line: #f3c9c5;
+
+  --rizik: #8a4d00;
+  --rizik-bg: #fff4e2;
+  --rizik-line: #f3ddb8;
+
+  --provjeri: #14417a;
+  --provjeri-bg: #e9f0fa;
+  --provjeri-line: #c6d6ec;
+
+  --ok: #15613f;
+  --ok-bg: #e6f4ec;
+  --ok-line: #bfe0cd;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-soft: var(--brand-soft);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-serif-display), ui-serif, Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--brand);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.display {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.08;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Semafor statusi ------------------------------------------------------- */
+
+.sev-kriticno {
+  --sev: var(--kriticno);
+  --sev-bg: var(--kriticno-bg);
+  --sev-line: var(--kriticno-line);
+}
+.sev-rizik {
+  --sev: var(--rizik);
+  --sev-bg: var(--rizik-bg);
+  --sev-line: var(--rizik-line);
+}
+.sev-provjeri {
+  --sev: var(--provjeri);
+  --sev-bg: var(--provjeri-bg);
+  --sev-line: var(--provjeri-line);
+}
+.sev-ok {
+  --sev: var(--ok);
+  --sev-bg: var(--ok-bg);
+  --sev-line: var(--ok-line);
+}
+
+/* Ispis — izvještaj mora biti upotrebljiv na papiru kod knjigovođe ------- */
+
+@media print {
+  :root {
+    --surface-2: #fff;
+    --surface-3: #fff;
+  }
+  body {
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #555;
+    word-break: break-all;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

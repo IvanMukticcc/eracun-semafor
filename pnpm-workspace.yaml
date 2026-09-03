@@ -1,3 +1,5 @@
 allowBuilds:
+  # tsx ovisi o esbuildu; njegov install skripta samo povezuje predgrađeni binarij.
+  esbuild: true
   sharp: false
   unrs-resolver: false

@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# eRačun Semafor
 
-## Getting Started
+Besplatna provjera spremnosti za eRačun / Fiskalizaciju 2.0, na hrvatskom.
 
-First, run the development server:
+Trinaest pitanja izvode pravni profil obveznika, a deterministički rules engine
+vraća izvještaj po semaforu: što vrijedi i od kojeg datuma, što nedostaje, rok
+i nositelj za svaki korak, članak zakona iza svake tvrdnje, raspon novčane
+kazne za taj pravni oblik, i gotova pitanja za knjigovođu i posrednika.
+
+## Pokretanje
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev      # http://localhost:3000
+pnpm test     # engine + codec
+pnpm check    # tsc --noEmit && test
+pnpm build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Arhitektura
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/lib/rules/          jezgra — čista, deterministička, testirana
+  types.ts              domenski tipovi
+  sources.ts            katalog primarnih izvora s datumom provjere
+  questions.ts          upitnik i grananje
+  engine.ts             profil obveznika → nalazi
+  handoff.ts            nalazi → pitanja za knjigovođu i posrednika
+src/lib/codec.ts        odgovori ⇄ token u URL-u
+src/app/                landing, čarobnjak, izvještaj, API za prijave
+supabase/migrations/    shema tablice leads
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Pravilo koje se ne krši: nijedan model nije u putu pravne tvrdnje.**
+Isti odgovori uvijek daju isti izvještaj. To je uvjet da se nalaz može braniti
+pred knjigovođom, i razlog zašto je engine čista funkcija bez mrežnih poziva.
 
-## Learn More
+Činjenična podloga je `../briefs/fiskalizacija-2-0-cinjenice.md`, provjerena
+prema Poreznoj upravi i NN 89/2025 dana 3.9.2026. Kad se propis promijeni,
+mijenja se taj dokument, pa `sources.ts` (uključujući `checkedOn`), pa pravila
+u `engine.ts` — tim redom.
 
-To learn more about Next.js, take a look at the following resources:
+## Odluke koje izgledaju kao propusti, a nisu
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Samo svijetla tema.** Kupac je obrtnik na mobitelu; jedan besprijekoran
+  izgled je bolji od dva osrednja. `color-scheme: light` je postavljen
+  namjerno, ne slučajno.
+- **Odgovori u URL-u, ne u bazi.** Izvještaj se šalje knjigovođi bez računa i
+  bez prijave. Kodiraju se eksplicitne vrijednosti, ne indeksi izbora, da
+  stara poveznica nikad ne promijeni značenje.
+- **Sažetak za bazu izvodi se na serveru iz tokena.** Klijent ne šalje ocjenu —
+  inače bi je svatko mogao izmisliti.
+- **Bez PDF biblioteke.** `@media print` daje isti rezultat, ispravno se
+  prelama i ne dodaje ovisnost koja mora pratiti hrvatske dijakritike.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Okolina
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vidi `.env.example`. Bez Supabase varijabli sve radi osim spremanja prijava —
+obrazac tada javlja korisniku pošteno stanje umjesto da pukne.
