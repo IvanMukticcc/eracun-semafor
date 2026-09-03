@@ -53,6 +53,24 @@ u `engine.ts` — tim redom.
 - **Bez PDF biblioteke.** `@media print` daje isti rezultat, ispravno se
   prelama i ne dodaje ovisnost koja mora pratiti hrvatske dijakritike.
 
+## Produkcija
+
+| | |
+|---|---|
+| Sajt | https://eracun-semafor.vercel.app |
+| Operativa | `/ops?k=…` — ključ je u `.env.local`, i u Vercel varijablama |
+| Vercel | projekt `eracun-semafor`, tim `swift-ui-van-s-projects` |
+| Supabase | projekt `eracun-semafor`, ref `bkprysaporiizwfrizzd`, regija `eu-central-1` |
+
+Deploy: `vercel --prod`. Varijable se postavljaju samo za `production`
+(`vercel env ls`), namjerno — vidi napomenu u `.env.local`.
+
+Migracije iz `supabase/migrations/` su primijenjene. Sve četiri tablice imaju
+RLS uključen **bez ijedne policy**, što je provjereno i s vanjske strane:
+`anon` ključem `SELECT` vraća prazno, a `INSERT` pada s
+`new row violates row-level security policy`. Jedini put do podataka je server
+sa service role ključem.
+
 ## Okolina
 
 Vidi `.env.example`. Bez Supabase varijabli sve radi osim spremanja prijava —
