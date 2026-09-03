@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { daysUntil2027, danaLabel, todayISO, formatHr } from "@/lib/date";
+import { daysUntil2027, daysSince2026, danaLabel, todayISO, formatHr } from "@/lib/date";
 
 // Odbrojavanje mora biti točno; osvježi jednom na sat.
 export const revalidate = 3600;
@@ -7,6 +7,7 @@ export const revalidate = 3600;
 export default function Home() {
   const today = todayISO();
   const days = daysUntil2027(today);
+  const since = daysSince2026(today);
 
   return (
     <main className="mx-auto max-w-5xl px-5">
@@ -38,25 +39,35 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Prvo stoji obveza koja *već traje*, pa tek onda ona koja dolazi.
+            Rok u budućnosti se odgađa; propust koji traje osam mjeseci ne. */}
         <aside className="self-start rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-6">
-          <p className="m-0 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-3)]">
-            Sljedeći rok
+          <p className="m-0 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--kriticno)]">
+            Već na snazi
           </p>
           <p className="tnum display m-0 mt-3 text-[52px] leading-none text-[var(--ink)]">
-            {days}
+            {since}
           </p>
           <p className="m-0 mt-1 text-[15px] font-medium text-[var(--ink-2)]">
-            {danaLabel(days)} do 1.1.2027.
+            {danaLabel(since)} otkad ste dužni zaprimati eRačune
           </p>
+          <p className="m-0 mt-4 text-[15px] leading-relaxed text-[var(--ink-2)]">
+            Obveza zaprimanja i fiskalizacije primljenih eRačuna vrijedi od 1.1.2026. —{" "}
+            <strong className="font-semibold">i za one izvan sustava PDV-a</strong>. Rok je pet
+            radnih dana od primitka svakog računa.
+          </p>
+          <p className="m-0 mt-3 text-[13px] text-[var(--ink-3)]">NN 89/2025, čl. 41 i čl. 48</p>
+
           <hr className="my-5 border-0 border-t border-[var(--line-2)]" />
+
           <p className="m-0 text-[15px] leading-relaxed text-[var(--ink-2)]">
-            Od 1.1.2027. i obveznici <strong className="font-semibold">izvan sustava PDV-a</strong>{" "}
-            moraju izdavati i fiskalizirati eRačune. Obveza ne ovisi o broju izdanih računa ni o
-            veličini obrta.
+            <strong className="tnum font-semibold text-[var(--ink)]">
+              {days} {danaLabel(days)}
+            </strong>{" "}
+            do 1.1.2027., kad počinje i obveza <em>izdavanja</em> za obveznike izvan sustava
+            PDV-a. Ne ovisi o broju računa ni o veličini obrta.
           </p>
-          <p className="m-0 mt-4 text-[13px] text-[var(--ink-3)]">
-            Zakon o fiskalizaciji, NN 89/2025, čl. 38 i čl. 80
-          </p>
+          <p className="m-0 mt-3 text-[13px] text-[var(--ink-3)]">NN 89/2025, čl. 38 i čl. 80</p>
         </aside>
       </section>
 
@@ -222,13 +233,15 @@ export default function Home() {
             ))}
           </ul>
         </div>
+        {/* Vodi na stranicu s obrascem, ne na mailto: zahtjev ureda tako
+            završi u bazi i na /ops, a ne u inboxu gdje ga nitko ne broji. */}
         <p className="mt-8 mb-0 text-[16px]">
-          <a
+          <Link
             className="font-semibold text-[var(--brand)] underline decoration-[var(--line-2)] underline-offset-[3px] transition-colors hover:decoration-[var(--brand)]"
-            href="mailto:ivan@faitech.hr?subject=Partnerski%20program%20za%20knjigovodstveni%20ured"
+            href="/knjigovodstveni-ured"
           >
-            Javite se o partnerskom programu
-          </a>
+            Kako to izgleda za ured →
+          </Link>
         </p>
       </section>
 

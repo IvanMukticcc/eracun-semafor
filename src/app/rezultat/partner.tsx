@@ -10,9 +10,27 @@ import { Field, TextArea, Honeypot, Consent, ErrorNote, submitForm } from "./for
  * predvidiv drugi čitatelj ove stranice. Najveći prigovor u prodaji —
  * „knjigovođa to rješava” — ovdje se pretvara u kanal: jedan ured pokriva
  * 50-200 obveznika, i svakom od njih objašnjava isto.
+ *
+ * Tekst je podesiv jer isti obrazac služi na dva mjesta s različitim ulazom:
+ * na izvještaju, gdje je knjigovođa stigao preko klijenta, i na vlastitoj
+ * stranici, gdje je stigao izravno. Obrazac je namjerno jedan — dva bi se
+ * razišla, a oba pišu u istu tablicu.
  */
-export function PartnerSection() {
-  const [open, setOpen] = useState(false);
+export function PartnerSection({
+  eyebrow = "Ako ovo čitate kao knjigovođa",
+  heading = "Isto ovo možete dati svim svojim klijentima odjednom",
+  body = "Klijent vam je vjerojatno poslao ovaj izvještaj s pitanjima. Umjesto da svakom objašnjavate isto, mogu napraviti provjeru za sve vaše klijente, s vašim imenom na izvještaju i pregledom tko je crven a tko zelen. Najkorisniji dio je popis klijenata kojima obveza zaprimanja teče od 1.1.2026., poredan po riziku.",
+  cta = "Javi mi se o partnerstvu",
+  /** Na vlastitoj stranici obrazac stoji otvoren; na izvještaju se otvara klikom. */
+  defaultOpen = false,
+}: {
+  eyebrow?: string;
+  heading?: string;
+  body?: string;
+  cta?: string;
+  defaultOpen?: boolean;
+} = {}) {
+  const [open, setOpen] = useState(defaultOpen);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -55,16 +73,13 @@ export function PartnerSection() {
   return (
     <section className="no-print mt-6 rounded-xl border border-[var(--line)] p-6 md:p-7">
       <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--ink-3)]">
-        Ako ovo čitate kao knjigovođa
+        {eyebrow}
       </p>
       <h2 className="mt-2 mb-0 text-[20px] font-semibold leading-snug text-[var(--ink)]">
-        Isto ovo možete dati svim svojim klijentima odjednom
+        {heading}
       </h2>
       <p className="mt-3 mb-0 max-w-2xl text-[16px] leading-relaxed text-[var(--ink-2)]">
-        Klijent vam je vjerojatno poslao ovaj izvještaj s pitanjima. Umjesto da svakom
-        objašnjavate isto, mogu napraviti provjeru za sve vaše klijente, s vašim imenom na
-        izvještaju i pregledom tko je crven a tko zelen. Najkorisniji dio je popis klijenata
-        kojima obveza zaprimanja teče od 1.1.2026., poredan po riziku.
+        {body}
       </p>
 
       {open ? (
@@ -113,7 +128,7 @@ export function PartnerSection() {
           onClick={() => setOpen(true)}
           className="mt-5 rounded-lg border border-[var(--line-2)] px-5 py-2.5 text-[15px] font-semibold text-[var(--ink-2)] transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]"
         >
-          Javi mi se o partnerstvu
+          {cta}
         </button>
       )}
     </section>

@@ -26,6 +26,16 @@ export function daysUntil2027(fromISO: string = todayISO()): number {
   return Math.max(0, daysUntil("2027-01-01", fromISO));
 }
 
+/**
+ * Dana otkad je obveza zaprimanja i fiskalizacije primljenih eRačuna na snazi.
+ *
+ * Ovo je jedini broj na naslovnici koji opisuje izloženost koja **već traje**,
+ * za razliku od odbrojavanja do 2027. koje se može odgoditi. Zato stoji prvi.
+ */
+export function daysSince2026(fromISO: string = todayISO()): number {
+  return Math.max(0, daysUntil(fromISO, "2026-01-01"));
+}
+
 /** 2026-09-03 → "3.9.2026." */
 export function formatHr(iso: string): string {
   const [y, m, d] = iso.split("-");
