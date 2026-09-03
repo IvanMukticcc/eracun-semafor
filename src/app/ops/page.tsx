@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { timingSafeEqual } from "node:crypto";
 import type { Metadata } from "next";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { serverSupabase } from "@/lib/supabase";
 import { OFFERS, type ProductId } from "@/lib/offers";
 import { AREA_LABEL } from "@/lib/labels";
+import { lijevak, kriticniTest, KRITICNI_TEST_PRAG } from "@/lib/funnel";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -101,10 +103,51 @@ export default async function OpsPage({
 
   const errors = [orders.error, partners.error, leads.error, assessments.error].filter(Boolean);
 
-  const withCritical = a.filter((x) => x.overall === "kriticno").length;
-  const nonVat = a.filter((x) => x.vat_status === "ne").length;
+  // Postotci se broje u bazi, ne u dohvaćenim redcima. Tablice gore su
+  // namjerno ograničene (1000/100/50), pa bi omjer iz duljine polja tiho
+  // postao kriv čim promet naraste — a to je upravo trenutak kad brojke
+  // počinju nešto značiti.
+  const [
+    provjere,
+    provjereKriticne,
+    provjereUredne,
+    provjereNePdv,
+    prijave,
+    zahtjevi,
+    zahtjeviAudit,
+    placeniAuditi,
+    placeniSetupi,
+    placeniSvi,
+  ] = await Promise.all([
+    tally(supabase, "assessments"),
+    tally(supabase, "assessments", { overall: "kriticno" }),
+    tally(supabase, "assessments", { overall: "ok" }),
+    tally(supabase, "assessments", { vat_status: "ne" }),
+    tally(supabase, "leads"),
+    tally(supabase, "orders"),
+    tally(supabase, "orders", { product: "audit" }),
+    tally(supabase, "orders", { product: "audit", status: "placeno" }),
+    tally(supabase, "orders", { product: "setup", status: "placeno" }),
+    tally(supabase, "orders", { status: "placeno" }),
+  ]);
+
+  // Prihod se i dalje zbraja iz redaka: zadnjih 100 narudžbi pokriva svaki
+  // stvarni iznos u ovoj fazi, a zbroj cijena se ne može dobiti brojanjem.
   const paid = o.filter((x) => x.status === "placeno");
   const revenueCents = paid.reduce((sum, x) => sum + x.price_cents, 0);
+
+  const mjere = lijevak({
+    provjere,
+    provjereKriticne,
+    provjereUredne,
+    prijave,
+    zahtjevi,
+    zahtjeviAudit,
+    placeniSvi,
+    placeniAuditi,
+    placeniSetupi,
+  });
+  const klin = kriticniTest(provjereUredne, provjere);
 
   // Koji je propust najčešći u populaciji — ulaz za iduću verziju ponude.
   const findingTally = new Map<string, number>();
@@ -119,7 +162,8 @@ export default async function OpsPage({
     <main className="mx-auto max-w-5xl px-5 py-10">
       <h1 className="display m-0 text-[32px] text-[var(--ink)]">Operativa</h1>
       <p className="mt-2 mb-0 text-[15px] text-[var(--ink-3)]">
-        Zadnjih 1000 provjera, 100 narudžbi, 50 prijava i 50 partnera.
+        Brojke i lijevak računaju se iz cijele baze. Tablice niže prikazuju zadnjih 100 narudžbi,
+        50 prijava, 50 partnera i 1000 provjera.
       </p>
 
       {errors.length > 0 && (
@@ -129,13 +173,85 @@ export default async function OpsPage({
       )}
 
       <section className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Provjere" value={a.length} />
-        <Stat label="S kritičnim" value={withCritical} note={pct(withCritical, a.length)} />
-        <Stat label="Izvan PDV-a" value={nonVat} note={pct(nonVat, a.length)} />
-        <Stat label="Prijave" value={l.length} note={pct(l.length, a.length)} />
-        <Stat label="Zahtjevi" value={o.length} note={pct(o.length, a.length)} />
-        <Stat label="Plaćeno" value={`${(revenueCents / 100).toFixed(0)} €`} note={`${paid.length} narudžbi`} />
+        <Stat label="Provjere" value={provjere} />
+        <Stat label="S kritičnim" value={provjereKriticne} note={pct(provjereKriticne, provjere)} />
+        <Stat label="Izvan PDV-a" value={provjereNePdv} note={pct(provjereNePdv, provjere)} />
+        <Stat label="Prijave" value={prijave} note={pct(prijave, provjere)} />
+        <Stat label="Zahtjevi" value={zahtjevi} note={pct(zahtjevi, provjere)} />
+        <Stat
+          label="Plaćeno"
+          value={`${(revenueCents / 100).toFixed(0)} €`}
+          note={`${placeniSvi} ${placeniSvi === 1 ? "narudžba" : "narudžbi"}`}
+        />
       </section>
+
+      {/* ── Kritični test ────────────────────────────────────────────────────
+          Prije svih ostalih metrika. Ako većina provjera izađe uredna, klin ne
+          postoji kako je zamišljen i gradi se pogrešna stvar. Alat namjerno
+          urednom obvezniku kaže da nema otvorenih koraka i odbija naplatu —
+          zato je ovaj udio pošten pokazatelj, a ne posljedica blagih pravila. */}
+      <section className="mt-6 rounded-lg border border-[var(--line)] px-5 py-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 className="m-0 text-[15px] font-semibold text-[var(--ink)]">
+            Kritični test: udio provjera bez ijednog otvorenog koraka
+          </h2>
+          <p className="tnum m-0 text-[15px] font-semibold text-[var(--ink)]">
+            {klin.udio === null ? "—" : `${Math.round(klin.udio)}%`}
+            <span className="ml-2 text-[13px] font-normal text-[var(--ink-3)]">
+              cilj: ispod {KRITICNI_TEST_PRAG} %
+            </span>
+          </p>
+        </div>
+        <p className="mt-2 mb-0 text-[14px] leading-relaxed text-[var(--ink-3)]">
+          {klin.prolazi === null ? (
+            <>Premalo podataka — treba barem 20 provjera, sada ih je {provjere}.</>
+          ) : klin.prolazi ? (
+            <>Klin stoji: većina obveznika koji prođu provjeru ima što popraviti.</>
+          ) : (
+            <>
+              Iznad praga. Većina obveznika je uredna, pa ovaj klin možda ne postoji —
+              prije daljnjeg ulaganja pročitati <code>briefs/2026-09-03-monetizacija.md</code>,
+              odjeljak 4.
+            </>
+          )}
+        </p>
+      </section>
+
+      <Section title="Lijevak">
+        <Table head={["Metrika", "Sada", "Hipoteza", "Ocjena"]}>
+          {mjere.map((m) => (
+            <tr key={m.id} className="border-t border-[var(--line)] align-top">
+              <Td>
+                <span className="font-medium text-[var(--ink)]">{m.naziv}</span>
+                {(m.stanje === "ispod" || m.stanje === "iznad") && (
+                  <span className="mt-0.5 block text-[var(--ink-3)]">{m.akoPadne}</span>
+                )}
+              </Td>
+              <Td>
+                <span className="tnum">
+                  {m.udio === null ? "—" : `${Math.round(m.udio)}%`}
+                </span>
+                <span className="tnum block text-[var(--ink-3)]">
+                  {m.brojnik} / {m.nazivnik}
+                </span>
+              </Td>
+              <Td>
+                <span className="tnum">
+                  {m.min}–{m.max} %
+                </span>
+              </Td>
+              <Td>
+                <Badge>{m.stanje === "premalo" ? "premalo podataka" : m.stanje}</Badge>
+              </Td>
+            </tr>
+          ))}
+        </Table>
+        <p className="mt-4 mb-0 text-[14px] leading-relaxed text-[var(--ink-3)]">
+          Rasponi u stupcu „Hipoteza” su <strong>pretpostavke, ne podaci</strong> — zapisane su u
+          <code> briefs/2026-09-03-monetizacija.md</code> da bi se mogle opovrgnuti. Ispod praga
+          uzorka ocjena se ne prikazuje, jer postotak iz tri mjerenja ne znači ništa.
+        </p>
+      </Section>
 
       <Section title="Zahtjevi za uslugu">
         {o.length === 0 ? (
@@ -269,6 +385,28 @@ export default async function OpsPage({
       </Section>
     </main>
   );
+}
+
+/* ── Mjerenje ────────────────────────────────────────────────────────────── */
+
+
+/**
+ * Broji redke u bazi umjesto u dohvaćenom polju. `head: true` ne vraća
+ * nijedan red, pa je jeftino i onda kad tablica naraste.
+ */
+async function tally(
+  supabase: SupabaseClient,
+  table: string,
+  filters: Record<string, string> = {},
+): Promise<number> {
+  let query = supabase.from(table).select("*", { count: "exact", head: true });
+  for (const [column, value] of Object.entries(filters)) query = query.eq(column, value);
+
+  const { count, error } = await query;
+  // Neuspjelo brojanje ne smije srušiti ploču; nula je vidljiva kao „premalo
+  // podataka”, a stvarna greška se ionako javlja iznad, iz glavnih upita.
+  if (error) console.error(`[ops] brojanje ${table} nije prošlo:`, error.message);
+  return count ?? 0;
 }
 
 /* ── Sitni dijelovi ──────────────────────────────────────────────────────── */
